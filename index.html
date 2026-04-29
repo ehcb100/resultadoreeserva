@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NoEstoque PRO</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #171a23;
+      --card-2: #1f2330;
+      --text: #f5f5f5;
+      --muted: #a8adbd;
+      --blue: #2563eb;
+      --purple: #7c3aed;
+      --gold: #d97706;
+      --danger: #dc2626;
+      --ok: #16a34a;
+      --border: rgba(255,255,255,.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #1f2937 0, var(--bg) 45%);
+      color: var(--text);
+      padding: 18px;
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #2563eb, #7c3aed, #d97706);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35);
+    }
+
+    h1 { font-size: 1.45rem; }
+    .subtitle { color: var(--muted); font-size: .9rem; margin-top: 3px; }
+
+    .pill {
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: .85rem;
+      background: rgba(255,255,255,.04);
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .module-card {
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+      border-radius: 24px;
+      padding: 22px;
+      cursor: pointer;
+      transition: .2s;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 18px 50px rgba(0,0,0,.20);
+    }
+
+    .module-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.25); }
+    .module-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; }
+    .module-desc { color: var(--muted); line-height: 1.4; font-size: .93rem; }
+    .module-tag { margin-top: 18px; font-size: .82rem; font-weight: 700; }
+
+    .blue { color: #93c5fd; }
+    .purple { color: #c4b5fd; }
+    .gold { color: #fcd34d; }
+
+    .panel {
+      display: none;
+      border: 1px solid var(--border);
+      background: rgba(23, 26, 35, .92);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.25);
+    }
+
+    .panel.active { display: block; }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .panel-head h2 { font-size: 1.25rem; }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 11px 14px;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--card-2);
+      transition: .2s;
+    }
+
+    button:hover { filter: brightness(1.12); transform: translateY(-1px); }
+    .btn-blue { background: var(--blue); }
+    .btn-purple { background: var(--purple); }
+    .btn-gold { background: var(--gold); }
+    .btn-danger { background: var(--danger); }
+    .btn-muted { background: #374151; }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: #10131b;
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px;
+      outline: none;
+      font-size: .95rem;
+    }
+
+    textarea { grid-column: span 4; min-height: 78px; resize: vertical; }
+    .form-button { grid-column: span 4; }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr 170px;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid var(--border); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      background: #11141d;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: .92rem;
+      vertical-align: top;
+    }
+
+    th { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+    tr:hover td { background: rgba(255,255,255,.03); }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 18px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .stat strong { display: block; font-size: 1.5rem; margin-top: 5px; }
+    .stat span { color: var(--muted); font-size: .84rem; }
+
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111827;
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 999px;
+      color: white;
+      display: none;
+      box-shadow: 0 15px 40px rgba(0,0,0,.35);
+      z-index: 20;
+    }
+
+    @media (max-width: 850px) {
+      body { padding: 12px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .dashboard { grid-template-columns: 1fr; }
+      form { grid-template-columns: 1fr; }
+      textarea, .form-button { grid-column: span 1; }
+      .search-row { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      .panel-head { flex-direction: column; align-items: flex-start; }
+      .actions, .actions button { width: 100%; }
+      .actions button { flex: 1; }
+      h1 { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">NE</div>
+        <div>
+          <h1>NoEstoque PRO</h1>
+          <p class="subtitle">Plataforma universal de controle da retaguarda</p>
+        </div>
+      </div>
+      <div class="pill">Reposição • Recolhimento • Preferenciais</div>
+    </header>
+
+    <section class="stats">
+      <div class="stat"><span>Reposições</span><strong id="count-reposicoes">0</strong></div>
+      <div class="stat"><span>Recolhimentos</span><strong id="count-recolhimentos">0</strong></div>
+      <div class="stat"><span>Preferenciais</span><strong id="count-preferenciais">0</strong></div>
+    </section>
+
+    <section class="dashboard" id="dashboard">
+      <article class="module-card" onclick="openModule('reposicoes')">
+        <div>
+          <div class="module-title blue">Reposição</div>
+          <p class="module-desc">Registre peças que precisam ser repostas, com referência, tamanho, urgência e observação.</p>
+        </div>
+        <div class="module-tag blue">Abrir módulo →</div>
+      </article>
+
+      <article class="module-card" onclick="openModule('recolhimentos')">
+        <div>
+          <div class="module-title purple">Recolhimento Baixo</div>
+          <p class="module-desc">Controle peças que precisam ser retiradas do estoque, mantendo histórico organizado.</p>
+        </div>
+        <div class="module-tag purple">Abrir módulo →</div>
+      </article>
+
+      <article class="module-card" onclick="openModule('preferenciais')">
+        <div>
+          <div class="module-title gold">Preferenciais</div>
+          <p class="module-desc">Cadastre peças que vendedores não querem que sejam retiradas, com motivo e responsável.</p>
+        </div>
+        <div class="module-tag gold">Abrir módulo →</div>
+      </article>
+    </section>
+
+    <section class="panel" id="module-panel">
+      <div class="panel-head">
+        <div>
+          <h2 id="module-title">Módulo</h2>
+          <p class="subtitle" id="module-subtitle">Cadastre e consulte registros.</p>
+        </div>
+        <div class="actions">
+          <button class="btn-muted" onclick="goHome()">Início</button>
+          <button class="btn-muted" onclick="printReport()">Gerar PDF</button>
+        </div>
+      </div>
+
+      <form id="item-form">
+        <input id="peca" placeholder="Nome da peça" required />
+        <input id="referencia" placeholder="Referência" required />
+        <input id="tamanho" placeholder="Tamanho / Grade" />
+        <input id="responsavel" placeholder="Vendedor / Responsável" />
+        <select id="urgencia">
+          <option value="Normal">Normal</option>
+          <option value="Média">Média</option>
+          <option value="Alta">Alta</option>
+          <option value="Crítica">Crítica</option>
+        </select>
+        <input id="quantidade" type="number" min="1" placeholder="Quantidade" />
+        <input id="categoria" placeholder="Categoria" />
+        <input id="motivo" placeholder="Motivo" />
+        <textarea id="observacao" placeholder="Observação"></textarea>
+        <button type="submit" class="form-button" id="save-button">Salvar Registro</button>
+      </form>
+
+      <div class="search-row">
+        <input id="search" placeholder="Pesquisar por peça, referência, vendedor, categoria..." oninput="renderTable()" />
+        <select id="filterUrgency" onchange="renderTable()">
+          <option value="">Todas urgências</option>
+          <option value="Normal">Normal</option>
+          <option value="Média">Média</option>
+          <option value="Alta">Alta</option>
+          <option value="Crítica">Crítica</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Peça</th>
+              <th>Referência</th>
+              <th>Tamanho</th>
+              <th>Qtd.</th>
+              <th>Responsável</th>
+              <th>Urgência</th>
+              <th>Motivo/Obs.</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // =====================================================
+    // CONFIGURAÇÃO DO FIREBASE
+    // =====================================================
+    // Como pegar:
+    // Firebase Console > Configurações do projeto > Seus apps > SDK setup and configuration > Config
+    // Apague os textos "COLE_AQUI" e coloque os dados reais do seu projeto.
+
+    const firebaseConfig = {
+      apiKey: "COLE_AQUI_SUA_API_KEY",
+      authDomain: "COLE_AQUI_SEU_AUTH_DOMAIN",
+      projectId: "COLE_AQUI_SEU_PROJECT_ID",
+      storageBucket: "COLE_AQUI_SEU_STORAGE_BUCKET",
+      messagingSenderId: "COLE_AQUI_SEU_MESSAGING_SENDER_ID",
+      appId: "COLE_AQUI_SEU_APP_ID"
+    };
+
+    // Inicialização do Firebase + Firestore
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Coleções que serão criadas automaticamente no Firestore:
+    // reposicoes
+    // recolhimentos
+    // preferenciais
+
+    let currentModule = null;
+    let currentItems = [];
+
+    const modules = {
+      reposicoes: {
+        title: "Reposição",
+        subtitle: "Registre peças que precisam voltar para loja/estoque.",
+        buttonClass: "btn-blue",
+        collection: "reposicoes"
+      },
+      recolhimentos: {
+        title: "Recolhimento Baixo",
+        subtitle: "Registre peças que precisam ser retiradas do estoque.",
+        buttonClass: "btn-purple",
+        collection: "recolhimentos"
+      },
+      preferenciais: {
+        title: "Preferenciais",
+        subtitle: "Registre peças que vendedores não querem que sejam retiradas.",
+        buttonClass: "btn-gold",
+        collection: "preferenciais"
+      }
+    };
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 2500);
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return "-";
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function capitalizeWords(text) {
+      if (!text) return "";
+      return text.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function openModule(moduleName) {
+      currentModule = moduleName;
+      const config = modules[moduleName];
+      document.getElementById("dashboard").style.display = "none";
+      document.getElementById("module-panel").classList.add("active");
+      document.getElementById("module-title").textContent = config.title;
+      document.getElementById("module-subtitle").textContent = config.subtitle;
+
+      const saveButton = document.getElementById("save-button");
+      saveButton.className = "form-button " + config.buttonClass;
+      saveButton.textContent = "Salvar em " + config.title;
+
+      document.getElementById("item-form").reset();
+      document.getElementById("search").value = "";
+      document.getElementById("filterUrgency").value = "";
+
+      loadItems();
+    }
+
+    function goHome() {
+      currentModule = null;
+      currentItems = [];
+      document.getElementById("dashboard").style.display = "grid";
+      document.getElementById("module-panel").classList.remove("active");
+    }
+
+    document.getElementById("item-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!currentModule) return;
+
+      const item = {
+        peca: capitalizeWords(document.getElementById("peca").value.trim()),
+        referencia: document.getElementById("referencia").value.trim(),
+        tamanho: document.getElementById("tamanho").value.trim().toUpperCase(),
+        responsavel: capitalizeWords(document.getElementById("responsavel").value.trim()),
+        urgencia: document.getElementById("urgencia").value,
+        quantidade: Number(document.getElementById("quantidade").value || 1),
+        categoria: capitalizeWords(document.getElementById("categoria").value.trim()),
+        motivo: capitalizeWords(document.getElementById("motivo").value.trim()),
+        observacao: document.getElementById("observacao").value.trim(),
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        await db.collection(modules[currentModule].collection).add(item);
+        document.getElementById("item-form").reset();
+        showToast("Registro salvo com sucesso.");
+        loadItems();
+        loadCounts();
+      } catch (error) {
+        console.error(error);
+        showToast("Erro ao salvar. Confira o Firebase.");
+      }
+    });
+
+    async function loadItems() {
+      if (!currentModule) return;
+      try {
+        const snapshot = await db.collection(modules[currentModule].collection)
+          .orderBy("criadoEm", "desc")
+          .get();
+
+        currentItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderTable();
+      } catch (error) {
+        console.error(error);
+        showToast("Erro ao carregar registros.");
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("table-body");
+      const search = document.getElementById("search").value.toLowerCase();
+      const urgency = document.getElementById("filterUrgency").value;
+
+      const filtered = currentItems.filter(item => {
+        const text = [
+          item.peca,
+          item.referencia,
+          item.tamanho,
+          item.responsavel,
+          item.urgencia,
+          item.categoria,
+          item.motivo,
+          item.observacao
+        ].join(" ").toLowerCase();
+
+        const matchesSearch = text.includes(search);
+        const matchesUrgency = !urgency || item.urgencia === urgency;
+        return matchesSearch && matchesUrgency;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty">Nenhum registro encontrado.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => `
+        <tr>
+          <td>${formatDate(item.criadoEm)}</td>
+          <td>${item.peca || "-"}</td>
+          <td>${item.referencia || "-"}</td>
+          <td>${item.tamanho || "-"}</td>
+          <td>${item.quantidade || 1}</td>
+          <td>${item.responsavel || "-"}</td>
+          <td>${item.urgencia || "Normal"}</td>
+          <td><strong>${item.motivo || ""}</strong><br>${item.observacao || ""}</td>
+          <td><button class="btn-danger" onclick="deleteItem('${item.id}')">Excluir</button></td>
+        </tr>
+      `).join("");
+    }
+
+    async function deleteItem(id) {
+      if (!currentModule) return;
+      const ok = confirm("Deseja excluir este registro?");
+      if (!ok) return;
+
+      try {
+        await db.collection(modules[currentModule].collection).doc(id).delete();
+        showToast("Registro excluído.");
+        loadItems();
+        loadCounts();
+      } catch (error) {
+        console.error(error);
+        showToast("Erro ao excluir registro.");
+      }
+    }
+
+    async function loadCounts() {
+      for (const key of Object.keys(modules)) {
+        try {
+          const snapshot = await db.collection(modules[key].collection).get();
+          document.getElementById("count-" + key).textContent = snapshot.size;
+        } catch (error) {
+          document.getElementById("count-" + key).textContent = "-";
+        }
+      }
+    }
+
+    function printReport() {
+      if (!currentModule) return;
+      window.print();
+    }
+
+    loadCounts();
+  </script>
+</body>
+</html>
